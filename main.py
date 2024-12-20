@@ -1,6 +1,11 @@
 import sympy as sym         #When working with symbols
-import matplotlib as matpl  #When working with graphs
+from scipy.linalg import expm
 import numpy as num         #When working with numerals
+import matplotlib.pyplot as plt
+from scipy.linalg import expm
+from math import factorial
+import pandas as pd
+
 
 # Define Initial Values (See anexo_A.txt)
 a = 11
@@ -72,7 +77,7 @@ real_part, imag_part = A_longitudinal_eigen[0].as_real_imag()
 omega_longitudinal = sym.sqrt(real_part**2 + imag_part**2)
 amortecimento = real_part / omega_longitudinal
 T_p = (2*sym.pi)/(omega_longitudinal*(sym.sqrt(1-amortecimento**2)))
-omega_p_longitudinal = abs((2 * sym.pi)/imag_part)
+omega_p_longitudinal = abs(imag_part)
 
 print("\nValue of omega_n (Natural Frequency) (Longitudinal):\n")
 sym.pprint(omega_longitudinal)
@@ -102,6 +107,13 @@ Gama_matrix = sym.Matrix.hstack(CB, CAB, CA2B, CA3B, D)
 print("\nGama Matrix (Longitudinal)=\n")
 sym.pprint(Gama_matrix)
 
+CA = C_longitudinal * A_longitudinal
+CA2 = C_longitudinal * A_longitudinal**2
+CA3 = C_longitudinal * A_longitudinal**3
+
+Theta_matrix = sym.Matrix.vstack(C_longitudinal, CA, CA2, CA3)
+print("\nTheta Matrix (Longitudinal)=\n")
+sym.pprint(Theta_matrix)
     #Lateral Analysis
 #Define A
 A_lateral = sym.Matrix([[-0.095, 0.129, 0.0643, -0.998],
@@ -121,11 +133,11 @@ A_lateral_eigen = list(A_lateral.eigenvals().keys())
 print("\nEigenvalues of A (Latero-directional):\n")
 print(A_lateral_eigen)
 
-real_part_lateral, imag_part_lateral = A_lateral_eigen[0].as_real_imag()
+real_part_lateral, imag_part_lateral = A_lateral_eigen[1].as_real_imag()
 omega_lateral = sym.sqrt(real_part_lateral**2 + imag_part_lateral**2)
 amortecimento_lateral = real_part_lateral / omega_lateral
 T_p_lateral = (2*sym.pi)/(omega_lateral*(sym.sqrt(1-amortecimento_lateral**2)))
-omega_p_lateral = abs((2 * sym.pi)/imag_part_lateral)
+omega_p_lateral = abs(imag_part_lateral)
 
 print("\nValue of omega_n (Natural Frequency) (Latero-directional):\n")
 sym.pprint(omega_lateral)
@@ -154,3 +166,122 @@ D_lateral = sym.zeros(2, 2)
 Gama_matrix_lateral = sym.Matrix.hstack(CB_lateral, CAB_lateral, CA2B_lateral, CA3B_lateral, D_lateral)
 print("\nGama Matrix (Lateral) =\n")
 sym.pprint(Gama_matrix_lateral)
+
+CA_lateral = C_lateral * A_lateral
+CA2_lateral = C_lateral * A_lateral**2
+CA3_lateral = C_lateral * A_lateral**3
+
+Theta_matrix = sym.Matrix.vstack(C_lateral, CA_lateral, CA2_lateral, CA3_lateral)
+print("\nTheta Matrix (Lateral)=\n")
+sym.pprint(Theta_matrix)
+
+#------------Simulation----------------------
+h=0.01
+def dinamica_sim(Ad,Bd,x0,u,tsim,h):
+ 
+    num_steps=int(tsim/h)
+    x_traj=num.zeros((num_steps,4))
+    time=num.arange(0,tsim,h)
+ 
+    x_k=x0
+    for k in range(num_steps):
+    
+        x_k=Ad @ x_k+ Bd @ u
+        x_traj[k,:]=x_k
+        
+    return time,x_traj
+ 
+#Data Storage
+ 
+def armazenar_evolucao(time, estados, labels):
+    df = pd.DataFrame(estados, columns=labels)
+    df['Tempo'] = time
+    
+    return df
+
+def plot_dinamica_sim(title,labels,descriptions,time,states,figsize=(12,8)):
+  
+    plt.figure(figsize=figsize)
+ 
+    for i in range(4):
+  
+        plt.subplot(2,2,i+1)
+        plt.plot(time,states[:,i],label=labels[i])
+        plt.title(descriptions[i])
+        plt.xlabel('Tempo(s)')
+        plt.ylabel(labels[i])
+        plt.legend()
+    
+    plt.suptitle(title,fontsize=16)
+    plt.tight_layout()
+    plt.show()
+
+
+
+
+
+
+def find_Bd(A, B, h, N):
+    I = num.eye(A.shape[0])  
+    Bd = num.zeros_like(B)  
+
+    for n in range(N):
+        term = num.linalg.matrix_power(A, n) * (h ** (n + 1)) / factorial(n + 1)
+        Bd += term @ B
+    return Bd
+
+
+
+
+A_long = num.array([[0.239, 20.643, -32.193, 0],
+                       [-0.0010, -1.0856, 0.0056, 0.9215],
+                       [0, 0, 0, 1],
+                       [2.1426, 0, -0.2892, -0.6621]])
+
+B_long = num.array([[0.0813, 0.0218],
+                             [0, -0.0012],
+                             [0, 0],
+                             [0, -0.0374]])
+
+Ad_long=expm(A_long*h)
+Bd_long=find_Bd(A_long,B_long,0.01,10)
+
+
+A_lat = num.array([[-0.095, 0.129, 0.0643, -0.998],
+                        [0, 0, 1, 0.0228],
+                        [-4.763, 0, -3.1885, 0.8535],
+                        [2.1426, 0, -0.2892, -0.6621]])
+
+B_lat = num.array([[0, 0.0006],
+                        [0, 0],
+                        [0.0137, 0.0069],
+                        [0.0009, -0.1031]])
+
+Ad_lat=expm(A_lat*h)
+Bd_lat=find_Bd(A_lat,B_lat,0.01,10)
+
+x0_long=num.array([40, 0.5, 0.1, 1.5])
+
+x0_lat=num.array([0.2, 0.3, 2, 1.5])
+
+#Control Vectors
+u_long=num.array([0.8,0.3])
+
+u_lat=num.array([0.4,0.2])
+
+#Long Simulation
+
+time_long,estado_long=dinamica_sim(Ad_long,Bd_long,x0_long,u_long,200,0.01)
+plot_dinamica_sim('Modelo de voo longitudinal',['u','alfa','theta','q'],
+                  ['velocidade vertical','ângulo de ataque','ângulo de arfagem','taxa de arfagem'],time_long,estado_long,(12,8))
+
+df_long = armazenar_evolucao(time_long, estado_long, ['u', 'alfa', 'theta', 'q'])
+df_long.to_excel("evolucao_voo_longitudinal.xlsx", index=False)
+
+
+time_lat,estado_lat=dinamica_sim(Ad_lat,Bd_lat,x0_lat,u_lat,20,0.01)
+plot_dinamica_sim('Modelo de voo latero-direcional',['beta','phi','p','r'],
+                  ['ângulo de derrapagem','ângulo de pranchamento','taxa de guinada','taxa de rolamento'],time_lat,estado_lat,(12,8))
+
+df_lat = armazenar_evolucao(time_lat, estado_lat, ['beta', 'phi', 'p', 'r'])
+df_lat.to_excel("evolucao_voo_laterodirecional.xlsx", index=False)
