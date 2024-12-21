@@ -177,7 +177,7 @@ sym.pprint(Theta_matrix)
 
 #------------Simulation----------------------
 h=0.01
-def dinamica_sim(Ad,Bd,x0,u,tsim,h):
+def simulate(Ad,Bd,x0,u,tsim,h):
  
     num_steps=int(tsim/h)
     x_traj=num.zeros((num_steps,4))
@@ -193,13 +193,13 @@ def dinamica_sim(Ad,Bd,x0,u,tsim,h):
  
 #Data Storage
  
-def armazenar_evolucao(time, estados, labels):
+def evolution(time, estados, labels):
     df = pd.DataFrame(estados, columns=labels)
-    df['Tempo'] = time
+    df['Time'] = time
     
     return df
 
-def plot_dinamica_sim(title,labels,descriptions,time,states,figsize=(12,8)):
+def plot_simulate(title,labels,descriptions,time,states,figsize=(12,8)):
   
     plt.figure(figsize=figsize)
  
@@ -234,28 +234,28 @@ def find_Bd(A, B, h, N):
 
 
 A_long = num.array([[0.239, 20.643, -32.193, 0],
-                       [-0.0010, -1.0856, 0.0056, 0.9215],
-                       [0, 0, 0, 1],
-                       [2.1426, 0, -0.2892, -0.6621]])
+                    [-0.0010, -1.0856, 0.0056, 0.9215],
+                    [0, 0, 0, 1],
+                    [2.1426, 0, -0.2892, -0.6621]])
 
 B_long = num.array([[0.0813, 0.0218],
-                             [0, -0.0012],
-                             [0, 0],
-                             [0, -0.0374]])
+                    [0, -0.0012],
+                    [0, 0],
+                    [0, -0.0374]])
 
 Ad_long=expm(A_long*h)
 Bd_long=find_Bd(A_long,B_long,0.01,10)
 
 
 A_lat = num.array([[-0.095, 0.129, 0.0643, -0.998],
-                        [0, 0, 1, 0.0228],
-                        [-4.763, 0, -3.1885, 0.8535],
-                        [2.1426, 0, -0.2892, -0.6621]])
+                   [0, 0, 1, 0.0228],
+                   [-4.763, 0, -3.1885, 0.8535],
+                   [2.1426, 0, -0.2892, -0.6621]])
 
 B_lat = num.array([[0, 0.0006],
-                        [0, 0],
-                        [0.0137, 0.0069],
-                        [0.0009, -0.1031]])
+                   [0, 0],
+                   [0.0137, 0.0069],
+                   [0.0009, -0.1031]])
 
 Ad_lat=expm(A_lat*h)
 Bd_lat=find_Bd(A_lat,B_lat,0.01,10)
@@ -271,17 +271,17 @@ u_lat=num.array([0.4,0.2])
 
 #Long Simulation
 
-time_long,estado_long=dinamica_sim(Ad_long,Bd_long,x0_long,u_long,200,0.01)
-plot_dinamica_sim('Modelo de voo longitudinal',['u','alfa','theta','q'],
-                  ['velocidade vertical','ângulo de ataque','ângulo de arfagem','taxa de arfagem'],time_long,estado_long,(12,8))
+time_long,state_long=simulate(Ad_long,Bd_long,x0_long,u_long,200,0.01)
+plot_simulate('Modelo de voo longitudinal',['u','alfa','theta','q'],
+                  ['velocidade vertical','ângulo de ataque','ângulo de arfagem','taxa de arfagem'],time_long,state_long,(12,8))
 
-df_long = armazenar_evolucao(time_long, estado_long, ['u', 'alfa', 'theta', 'q'])
+df_long = evolution(time_long, state_long, ['u', 'alfa', 'theta', 'q'])
 df_long.to_excel("evolucao_voo_longitudinal.xlsx", index=False)
 
 
-time_lat,estado_lat=dinamica_sim(Ad_lat,Bd_lat,x0_lat,u_lat,20,0.01)
-plot_dinamica_sim('Modelo de voo latero-direcional',['beta','phi','p','r'],
+time_lat,estado_lat=simulate(Ad_lat,Bd_lat,x0_lat,u_lat,20,0.01)
+plot_simulate('Modelo de voo latero-direcional',['beta','phi','p','r'],
                   ['ângulo de derrapagem','ângulo de pranchamento','taxa de guinada','taxa de rolamento'],time_lat,estado_lat,(12,8))
 
-df_lat = armazenar_evolucao(time_lat, estado_lat, ['beta', 'phi', 'p', 'r'])
+df_lat = evolution(time_lat, estado_lat, ['beta', 'phi', 'p', 'r'])
 df_lat.to_excel("evolucao_voo_laterodirecional.xlsx", index=False)
